@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Любовные стихи</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* =============================================
+           ENVELOPE SCENE
+        ============================================= */
+        #envScene {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 32px;
+            z-index: 20;
+            transition: opacity 0.65s ease, transform 0.65s ease;
+        }
+        #envScene.exit {
+            opacity: 0;
+            transform: translateY(56px) scale(0.9);
+            pointer-events: none;
+        }
+
+        /* --- Envelope wrapper --- */
+        .envelope {
+            position: relative;
+            width: clamp(280px, 56vw, 420px);
+            aspect-ratio: 3 / 2;
+            cursor: pointer;
+            filter: drop-shadow(0 28px 70px rgba(70, 0, 130, 0.5));
+            transition: transform 0.3s ease, filter 0.3s ease;
+            animation: envFloat 3.2s ease-in-out infinite;
+        }
+        .envelope:hover:not(.is-open) {
+            animation: none;
+            transform: translateY(-12px) scale(1.04);
+            filter: drop-shadow(0 36px 80px rgba(70, 0, 150, 0.6));
+        }
+        .envelope.is-open {
+            animation: none;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        @keyframes envFloat {
+            0%, 100% { transform: translateY(0)    scale(1); }
+            50%       { transform: translateY(-9px) scale(1.015); }
+        }
+
+        /* --- Envelope body (the main rectangle) --- */
+        .env-body {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(155deg, #d6699a 0%, #b646b8 52%, #8832a6 100%);
+            border-radius: 6px 6px 16px 16px;
+            z-index: 1;
+        }
+        /* V-fold lines on the front face */
+        .env-body::before,
+        .env-body::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 6px 6px 16px 16px;
+        }
+        .env-body::before {
+            background: linear-gradient(to bottom right,
+                transparent 49.5%,
+                rgba(0, 0, 0, 0.09) 49.5%,
+                rgba(0, 0, 0, 0.09) 50.5%,
+                transparent 50.5%
+            );
+        }
+        .env-body::after {
+            background: linear-gradient(to bottom left,
+                transparent 49.5%,
+                rgba(0, 0, 0, 0.09) 49.5%,
+                rgba(0, 0, 0, 0.09) 50.5%,
+                transparent 50.5%
+            );
+        }
+
+        /* --- White letter inside --- */
+        .env-letter {
+            position: absolute;
+            bottom: 10px;
+            left: 12px;
+            right: 12px;
+            height: calc(100% - 20px);
+            background: linear-gradient(170deg, #fff8fc 0%, #fff0f6 100%);
+            border-radius: 4px 4px 10px 10px;
+            z-index: 2;
+            transform: translateY(0);
+            transition: transform 1.0s cubic-bezier(0.4, 0, 0.2, 1) 0.55s;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        /* Ruled lines on paper */
+        .env-letter::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                transparent,
+                transparent 24px,
+                rgba(180, 100, 180, 0.13) 24px,
+                rgba(180, 100, 180, 0.13) 25px
+            );
+        }
+        .envelope.is-open .env-letter {
+            transform: translateY(-84%);
+        }
+
+        /* --- Flap (triangle, rotates open) --- */
+        .env-flap {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 56%;
+            z-index: 4;
+            transform-origin: top center;
+            transition: transform 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Front face of flap */
+        .env-flap::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(175deg, #c452b4 0%, #a030a2 100%);
+            clip-path: polygon(0 0, 100% 0, 50% 100%);
+        }
+        /* Inner face of flap (lighter, visible when rotated back) */
+        .env-flap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(175deg, #ebbce8 0%, #d898d4 100%);
+            clip-path: polygon(0 0, 100% 0, 50% 100%);
+            transform: scaleX(-1);
+            opacity: 0;
+            transition: opacity 0.1s ease 0.42s;
+        }
+        .envelope.is-open .env-flap {
+            transform: perspective(900px) rotateX(-172deg);
+        }
+        .envelope.is-open .env-flap::after {
+            opacity: 1;
+        }
+
+        /* --- Seal --- */
+        .env-seal {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(2rem, 4.5vw, 3rem);
+            z-index: 5;
+            pointer-events: none;
+            transition: opacity 0.3s ease 0.15s, transform 0.3s ease 0.15s;
+            filter: drop-shadow(0 3px 10px rgba(0,0,0,0.22));
+        }
+        .envelope.is-open .env-seal {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0) rotate(25deg);
+        }
+
+        /* --- Hint text --- */
+        .env-hint {
+            font-size: clamp(1.2rem, 2.5vw, 1.65rem);
+            color: rgba(255, 255, 255, 0.88);
+            margin: 0;
+            text-shadow: 0 2px 12px rgba(80, 0, 120, 0.35);
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+        .envelope.is-open ~ .env-hint {
+            opacity: 0;
+        }
+
+        /* =============================================
+           POEM CARD (hidden until envelope opens)
+        ============================================= */
+        #poemCard {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.86) translateY(28px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+        #poemCard.visible {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1) translateY(0);
+        }
+
+        /* Paper-style poem card */
+        #poemCard .page {
+            background: rgba(255, 248, 252, 0.22);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Floating petals background -->
+    <div class="petals-bg">
+        <span class="petal">🌸</span>
+        <span class="petal">🌺</span>
+        <span class="petal">🌸</span>
+        <span class="petal">🌷</span>
+        <span class="petal">🌸</span>
+        <span class="petal">🌺</span>
+        <span class="petal">🌸</span>
+        <span class="petal">🌷</span>
+        <span class="petal">🌸</span>
+        <span class="petal">🌺</span>
+        <span class="petal">🌸</span>
+        <span class="petal">🌷</span>
+    </div>
+
+    <!-- ── SCENE 1: Envelope ── -->
+    <div id="envScene">
+        <div class="envelope" id="envelope" onclick="openEnvelope()">
+            <div class="env-body"></div>
+            <div class="env-letter"></div>
+            <div class="env-flap"></div>
+            <div class="env-seal">💌</div>
+        </div>
+        <p class="env-hint">Нажми на конверт, чтобы открыть ✨</p>
+    </div>
+
+    <!-- ── SCENE 2: Poem card (revealed after animation) ── -->
+    <div id="poemCard">
+        <div class="page">
+            <h1>Любовные стихи</h1>
+            <div class="divider">· · ✦ · ·</div>
+            <p class="poem">
+Я смотрю на тебя и теряюсь.
+Не в мыслях — в тебе.
+В том, как твои глаза смотрят сквозь меня,
+будто знают всё, что я прячу внутри.
+
+Карие, тёплые, глубокие —
+в них можно утонуть и не захотеть выплывать.
+
+Твоя улыбка — это не просто красота.
+Это удар прямо в грудь.
+Тихий. Точный. Без предупреждения.
+
+А голос.
+Господи, твой голос.
+Он остаётся во мне после каждого разговора,
+крутится в голове, не отпускает,
+как мелодия, которую невозможно забыть.
+
+Ты не просто нравишься мне.
+Ты — как первый глоток воздуха
+после долгого времени под водой.
+
+Я влюбился один раз.
+И это, кажется, навсегда.
+
+Не знаю, как ты это делаешь —
+просто быть собой
+и разрушать меня так красиво.
+            </p>
+            <div class="footer">
+                <a class="back-link" href="index.html">← Вернуться назад</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let opened = false;
+
+        function openEnvelope() {
+            if (opened) return;
+            opened = true;
+
+            const envelope  = document.getElementById('envelope');
+            const envScene  = document.getElementById('envScene');
+            const poemCard  = document.getElementById('poemCard');
+
+            // Step 1: trigger flap open + letter rise (CSS transitions)
+            envelope.classList.add('is-open');
+
+            // Step 2: after letter has risen, fade envelope out and reveal poem
+            setTimeout(() => {
+                envScene.classList.add('exit');
+                poemCard.classList.add('visible');
+            }, 1550);
+        }
+    </script>
+</body>
+</html>
